@@ -6,7 +6,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
-from prepare import ROOT, PORTS, CHIHIRO, prepare, image_for, verify_image
+from prepare import ROOT, PORTS, CHIHIRO, ANDROID, prepare, image_for, verify_image
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("title", choices=PORTS, nargs="?", default="Splashdown")
@@ -14,6 +14,13 @@ parser.add_argument("--jobs", default="3")
 parser.add_argument("--stage-only", action="store_true", help="Prepare Java and per-port sources without game data")
 parser.add_argument("--dependencies-only", action="store_true", help="Build SDL/glslang without game data")
 parser.add_argument("--deps-build", type=Path, help="Reuse an existing compatible Android _deps build directory")
+parser.add_argument("--render-percent", type=int, default=75, help="initial internal render scale, percent of the panel height")
+parser.add_argument("--fps-cap", type=int, default=60, help="frame cap written into the packaged settings.toml")
+parser.add_argument("--resolution-min", type=int, default=50, help="dynamic-resolution floor, percent")
+parser.add_argument("--resolution-max", type=int, default=85, help="dynamic-resolution ceiling, percent")
+parser.add_argument("--power-mode", type=int, default=1, choices=(0, 1, 2), help="0 balanced, 1 performance, 2 powersave")
+parser.add_argument("--no-dynamic-resolution", action="store_true", help="start with the governor off")
+parser.add_argument("--no-precise-pacing", action="store_true", help="use the simpler relative-sleep pacer")
 args = parser.parse_args()
 title = args.title
 label, slug, target = PORTS[title]
@@ -22,6 +29,23 @@ stage = ROOT / ".local/android" / title
 sdk = prepare(title)
 android = stage / "android"
 main = android / "app/src/main"
+# The runtime reads settings.toml from the app's internal storage. Ship a
+# first-run copy in the APK; GameActivity copies it to files/ before the native
+# thread starts, and never overwrites a file the player has edited.
+assets = main / "assets"
+assets.mkdir(parents=True, exist_ok=True)
+(assets / "settings.toml").write_text(
+    f"render_percent = {args.render_percent}\n"
+    f"fps_cap = {args.fps_cap}\n"
+    "vsync = false\n"
+    f"dynamic_resolution = {str(not args.no_dynamic_resolution).lower()}\n"
+    f"resolution_min = {args.resolution_min}\n"
+    f"resolution_max = {args.resolution_max}\n"
+    "target_fps = 60\n"
+    f"power_mode = {args.power_mode}\n"
+    f"precise_pacing = {str(not args.no_precise_pacing).lower()}\n"
+    "inline_dpc = true\n",
+    encoding="utf-8")
 sdk_root = Path(os.environ.get("ANDROID_SDK_ROOT", os.environ.get("ANDROID_HOME", "/opt/android-sdk")))
 ndk = Path(os.environ.get("NDK", str(sdk_root / "ndk/28.2.13676358")))
 dep_project = ROOT / ".local/android-dependencies"
@@ -58,8 +82,8 @@ for activity in ("LauncherActivity", "GameActivity"):
 shutil.copytree(ROOT / "android/app/src/main/res", main / "res", dirs_exist_ok=True)
 manifest = (ROOT / "android/app/src/main/AndroidManifest.xml").read_text()
 manifest = manifest.replace("com.splashdown.recomp", package).replace('android:label="Splashdown"', f'android:label="{label}"')
-if title in CHIHIRO:
-    info = CHIHIRO[title]
+info = ANDROID.get(title) or CHIHIRO.get(title)
+if info:
     metadata = (f'<meta-data android:name="org.xberecomp.GAME_XBE" android:value="{info["xbe"]}" />\n'
                 f'        <meta-data android:name="org.xberecomp.CONTROLS" android:value="{info["controls"]}" />\n'
                 f'        <meta-data android:name="org.xberecomp.FOLDER_ONLY" android:value="{str(info["folder_only"]).lower()}" />\n        ')

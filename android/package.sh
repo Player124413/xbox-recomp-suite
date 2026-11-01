@@ -36,10 +36,17 @@ for lib in "$jni_dir"/*.so; do
     "$ndk_dir/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip" \
         --strip-unneeded -o "$package_dir/payload/lib/arm64-v8a/$(basename "$lib")" "$lib"
 done
+# first-run settings.toml, copied by GameActivity before the native thread starts
+if [ -d app/src/main/assets ]; then
+    mkdir -p "$package_dir/payload/assets"
+    cp -a app/src/main/assets/. "$package_dir/payload/assets/"
+fi
 cp "$package_dir/base.apk" "$package_dir/unsigned.apk"
 (
     cd "$package_dir/payload"
-    zip -q -0 "$package_dir/unsigned.apk" classes.dex lib/arm64-v8a/*.so
+    zip_args=(classes.dex lib/arm64-v8a/*.so)
+    if [ -d assets ]; then zip_args+=(assets/*); fi
+    zip -q -0 "$package_dir/unsigned.apk" "${zip_args[@]}"
 )
 "$build_tools/zipalign" -P 16 -f 4 "$package_dir/unsigned.apk" "$package_dir/aligned.apk"
 keystore="${KEYSTORE:-$PWD/build/debug.keystore}"

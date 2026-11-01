@@ -48,11 +48,30 @@ void Load() {
         if (mode == kModes[i]) s.display_mode = DisplayMode(i);
     s.width = t["width"].value_or(s.width);
     s.height = t["height"].value_or(s.height);
-    s.render_percent = t["render_percent"].value_or(s.render_percent);
+    if (auto v = t["render_percent"].value<int64_t>()) {
+        s.render_percent = uint32_t(*v);
+        s.render_percent_set = true;
+    }
     s.fps_cap = t["fps_cap"].value_or(s.fps_cap);
     s.vsync = t["vsync"].value_or(s.vsync);
     s.aniso = t["anisotropic_filtering"].value_or(s.aniso);
     s.join_ip = t["join_ip"].value_or(s.join_ip);
+    if (auto v = t["dynamic_resolution"].value<bool>()) {
+        s.dynamic_resolution = *v;
+        s.dynamic_resolution_set = true;
+    }
+    s.resolution_min = t["resolution_min"].value_or(s.resolution_min);
+    s.resolution_max = t["resolution_max"].value_or(s.resolution_max);
+    if (auto v = t["target_fps"].value<int64_t>()) {
+        s.target_fps = uint32_t(*v);
+        s.target_fps_set = true;
+    }
+    if (auto v = t["power_mode"].value<int64_t>()) {
+        s.power_mode = uint32_t(*v);
+        s.power_mode_set = true;
+    }
+    s.precise_pacing = t["precise_pacing"].value_or(s.precise_pacing);
+    s.inline_dpc = t["inline_dpc"].value_or(s.inline_dpc);
     for (const Option& o : kGame.options) {
         if (o.flag) *o.flag = t[o.key].value_or(*o.flag);
         else *o.value = t[o.key].value_or(*o.value);
@@ -73,7 +92,14 @@ toml::table Table() {
                   {"fps_cap", int64_t(s.fps_cap)},
                   {"vsync", s.vsync},
                   {"anisotropic_filtering", int64_t(s.aniso)},
-                  {"join_ip", s.join_ip}};
+                  {"join_ip", s.join_ip},
+                  {"dynamic_resolution", s.dynamic_resolution},
+                  {"resolution_min", int64_t(s.resolution_min)},
+                  {"resolution_max", int64_t(s.resolution_max)},
+                  {"target_fps", int64_t(s.target_fps)},
+                  {"power_mode", int64_t(s.power_mode)},
+                  {"precise_pacing", s.precise_pacing},
+                  {"inline_dpc", s.inline_dpc}};
     for (const Option& o : kGame.options) {
         if (o.flag) t.insert(o.key, *o.flag);
         else t.insert(o.key, int64_t(*o.value));

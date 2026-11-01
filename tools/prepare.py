@@ -16,7 +16,8 @@ PORTS = {"Splashdown": ("Splashdown", "splashdown", "Splashdown"),
          "LARush": ("L.A. Rush", "larush", "LARush"),
          "VCop3": ("Virtua Cop 3", "vcop3", "VCop3"),
          "HOTD3": ("The House of the Dead III", "hotd3", "HOTD3"),
-         "OutRun2": ("OutRun 2", "outrun2", "OutRun2")}
+         "OutRun2": ("OutRun 2", "outrun2", "OutRun2"),
+         "SonicHeroes": ("Sonic Heroes", "sonicheroes", "SonicHeroes")}
 
 CHIHIRO = {
     "VCop3": {"xbe": "default.xbe", "sha256": "832b6b786ae44acca64ad10aa82621ce86a8e209866259e78821e3d3c396e83c",
@@ -25,6 +26,13 @@ CHIHIRO = {
               "input": "HOTD3_SDL_INPUT", "controls": "gun-hotd3", "folder_only": True},
     "OutRun2": {"xbe": "outrun2.xbe", "sha256": "d98a7efc0ee4ba48b6e938743fa309a9fc774c05713ef735e67d1b17b9bbbd1b",
                "input": "OUTRUN2_SDL_INPUT", "controls": "driving", "folder_only": True},
+}
+
+# Retail Xbox titles with a touch overlay. Sonic Heroes uses the platformer
+# overlay (analog stick + Xbox face/directional buttons) and accepts either an
+# ISO or an extracted folder in the launcher.
+ANDROID = {
+    "SonicHeroes": {"xbe": "default.xbe", "controls": "platformer", "folder_only": False},
 }
 
 

@@ -8,6 +8,7 @@
 #include <vulkan/vulkan.h>
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -387,8 +388,19 @@ void FinishHandover() {}
 void Pace() {
     using clock = std::chrono::steady_clock;
     static clock::time_point next = clock::now();
+    static clock::time_point last_report = clock::now();
+    static bool first_report = true;
     uint32_t cap = Get().fps_cap;
     auto now = clock::now();
+    if (first_report) {
+        // The first call follows boot and shader compilation; it is not a
+        // frame time the governor should learn from.
+        first_report = false;
+        last_report = now;
+    } else {
+        ReportFrame(std::chrono::duration<double, std::milli>(now - last_report).count());
+        last_report = now;
+    }
     if (!cap) {
         next = now;
         return;
@@ -396,7 +408,22 @@ void Pace() {
     auto period = std::chrono::nanoseconds(1000000000ull / cap);
     next += period;
     if (next < now - period) next = now;
-    while (clock::now() + std::chrono::milliseconds(2) < next) std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    if (Get().precise_pacing) {
+        // Sleep on the absolute monotonic clock until the last two
+        // milliseconds, then spin. This avoids the 1 ms timer granularity and
+        // the drift of a relative sleep loop, which is what makes a 60 FPS cap
+        // look like 58-59 on some phone kernels.
+        const auto spin = std::chrono::milliseconds(2);
+        if (next - now > spin) {
+            const auto target = next - spin;
+            struct timespec ts;
+            ts.tv_sec = std::chrono::duration_cast<std::chrono::seconds>(target.time_since_epoch()).count();
+            ts.tv_nsec = std::chrono::duration_cast<std::chrono::nanoseconds>(target.time_since_epoch()).count() % 1000000000;
+            clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, nullptr);
+        }
+    } else {
+        while (clock::now() + std::chrono::milliseconds(2) < next) std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
     while (clock::now() < next) std::this_thread::yield();
 }
 

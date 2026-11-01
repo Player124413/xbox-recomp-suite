@@ -56,6 +56,7 @@ int main(int argc, char** argv) {
     logx::Init((app::ExeDir() / "logs").string(), log, relaunched);
     app::Load();
     if (app::kGame.init) app::kGame.init();
+    app::PerformanceInit();
 
     // video first: input::Init sees the window owns SDL's events and leaves them to this thread
     SDL_SetHint(SDL_HINT_VIDEO_WAYLAND_PREFER_LIBDECOR, "1");
@@ -100,6 +101,7 @@ int main(int argc, char** argv) {
     }
     while (app::PumpEvents(100)) {
     }
+    app::PerformanceShutdown();
     logx::Flush();
     kernel::Shutdown(0);
 }

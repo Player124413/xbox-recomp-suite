@@ -47,6 +47,20 @@ tapping outside it reloads. A second aim finger cannot steal the primary aim.
 Focus loss and touch cancellation release held controls. A USB/Bluetooth mouse
 can also use the shooters' desktop left-fire/right-reload mappings.
 
+## Sonic Heroes touch controls
+
+| Port | Touch controls |
+| --- | --- |
+| Sonic Heroes | Left analog stick moves; Jump (A), Action (B), Special (X); CamL/CamR on the D-pad; Start; Settings pauses the game |
+
+The stick is a fixed base at the bottom-left; the knob follows the finger and
+the vector is clamped to the unit circle with a 16% deadzone. The overlay
+publishes a virtual Xbox controller 0 to the runtime, so the guest's XInput
+reads see the stick, D-pad and face buttons exactly like a physical pad. A
+second finger cannot steal the stick. Settings sends R3/F10 and pauses the
+game, its clocks and audio. The overlay releases every held control on focus
+loss, pause, cancel and process exit.
+
 The ARM64 APKs build and their native mouse/touch tests pass. No Android device
 was connected for this addition, so these three games' on-device boot, graphics,
 touch alignment, performance and sound remain unverified. Earlier device results

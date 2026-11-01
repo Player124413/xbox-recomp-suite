@@ -1,5 +1,20 @@
 # Verification record — updated 2026-10-21
 
+## Sonic Heroes bring-up (not device-verified)
+
+The Sonic Heroes port scaffold, XBE config generator, launcher integration,
+touch platformer overlay, virtual-controller bridge, performance governor and
+GitHub Actions workflow are implemented. `tools/sonic_heroes.py` has six unit
+tests (retail/debug entry keys, section/library parsing, config generation, XDK
+override, partition clamping) and they pass. The Git index audit passes: no
+game data, generated code, APKs or keys are staged.
+
+No retail Sonic Heroes ISO has been booted on a phone or desktop in this
+snapshot. Gameplay, rendering, audio, touch alignment, saves, sustained 60 FPS
+and thermals are unverified. The exact XDK library build and symbol table of the
+builder's executable are also unverified; `build.sh` reports when no checked-in
+signatures match and the port must be brought up from the generated config.
+
 ## Chihiro Android additions
 
 Virtua Cop 3 (MYSTRO), HOTD3 and OutRun 2 now have ARM64 APKs built with NDK

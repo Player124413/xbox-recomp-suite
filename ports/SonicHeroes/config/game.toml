@@ -1,0 +1,29 @@
+# Recompiler input for Sonic Heroes (original Xbox, default.xbe).
+#
+# This is a template. The entry point, title id, XDK layout and section list
+# depend on the exact executable you own. Generate the real config with:
+#
+#   python3 tools/sonic_heroes.py ports/SonicHeroes/assets/default.xbe
+#
+# The tool writes this file in place, then the build script recompiles it.
+# The [symbols] and [data] tables are intentionally empty here; run
+# xbe_symbols when your image's library build has checked-in signatures, or
+# add the addresses as the port is brought up. No game data is stored in this
+# repository.
+
+[xbe]
+path = "assets/default.xbe"
+title = 0x00000000
+entry = 0x10000
+xdk = 5849
+out = "generated/game"
+partitions = 64
+code_sections = [".text", "D3D", "D3DX", "XGRPH", "DSOUND", "XMV", "XPP"]
+
+# extra entry points
+[functions]
+
+# functions the host replaces or calls by name, 0 where the image has none
+[symbols]
+
+[data]

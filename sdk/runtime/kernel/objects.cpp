@@ -4,8 +4,13 @@
 #include <queue>
 
 #include "kernel/kernel.h"
+#include "kernel/irql.h"
+
+#include "app/app.h"
 
 namespace kernel {
+
+extern IrqlGate g_irql_gate;
 
 namespace {
 
@@ -338,9 +343,24 @@ void RunDpcs(X86Context& ctx) {
 }
 
 void QueueDpc(uint32_t dpc, uint32_t arg1, uint32_t arg2) {
-    std::lock_guard<std::mutex> lock(g_dpc_lock);
     W32(dpc + 0x14, arg1);  // KDPC.SystemArgument1 and 2
     W32(dpc + 0x18, arg2);
+    // OGlue's Sonic Heroes fix: DirectSound's idle-voice DPC was queued from
+    // an ISR and left to a host thread; the title's main thread, holding
+    // DirectSound at DISPATCH_LEVEL, then read a stale "voice done" and freed
+    // the song's voice. Running the DPC on the thread that is already inside
+    // the DISPATCH region preserves the console's ordering. Only do this when
+    // the title has a guest thread and the gate is held; timers and host
+    // threads keep the existing queue.
+    if (app::Get().inline_dpc && g_irql_gate.Held()) {
+        if (Thread* self = Current(); self && self->ctx) {
+            G<uint8_t>(dpc + 2) = 0;  // Inserted
+            const uint32_t routine = R32(dpc + 0x0C), context = R32(dpc + 0x10);
+            if (routine) CallGuest(*self->ctx, routine, {dpc, context, arg1, arg2});
+            return;
+        }
+    }
+    std::lock_guard<std::mutex> lock(g_dpc_lock);
     g_dpcs.push_back({dpc, arg1, arg2});
     g_dpc_cv.notify_one();
     if (!g_dpc_thread) {
