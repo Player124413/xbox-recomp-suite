@@ -1,0 +1,183 @@
+name: Sonic Heroes Android
+
+# Builds the Sonic Heroes port and an installable ARM64 APK.
+#
+# The game is NOT in the repository. Provide your own ISO through a release
+# asset (private repository recommended) or a direct URL, then run this
+# workflow. The ISO is used on the runner to recompile the guest code and is
+# never uploaded or packaged into the APK.
+#
+# Run it from:
+#   https://github.com/Player124413/xbox-recomp-suite/actions/workflows/sonic-heroes-android.yml
+
+on:
+  workflow_dispatch:
+    inputs:
+      game_release_tag:
+        description: "Release tag that holds the game asset (default: game-data)"
+        required: false
+        default: "game-data"
+      game_asset:
+        description: "Asset name in that release: an .iso, or a .zip containing default.xbe"
+        required: false
+        default: "sonic-heroes.iso"
+      game_iso_url:
+        description: "Optional direct URL to the ISO; overrides the release asset"
+        required: false
+        default: ""
+      render_percent:
+        description: "Initial internal render scale, percent of panel height (50-100)"
+        required: false
+        default: "75"
+      fps_cap:
+        description: "Frame cap: 60, 90, 120 or 0 for unlimited"
+        required: false
+        default: "60"
+      power_mode:
+        description: "0 balanced, 1 performance (big cores), 2 powersave"
+        required: false
+        default: "1"
+      dynamic_resolution:
+        description: "Enable the dynamic-resolution governor"
+        type: boolean
+        required: false
+        default: true
+      precise_pacing:
+        description: "Use absolute-clock frame pacing"
+        type: boolean
+        required: false
+        default: true
+
+concurrency:
+  group: sonic-heroes-android-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Recompile and package APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    steps:
+      - name: Check out the suite
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: |
+          set -euo pipefail
+          SDK="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          SDKMANAGER="$SDK/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$(command -v sdkmanager)"
+          fi
+          echo "sdkmanager: $SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;36.0.0" "ndk;28.2.13676358"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+
+      - name: Install Linux build tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang lld cmake ninja-build pkg-config python3 python3-pip \
+            libsdl3-dev libvulkan-dev unzip curl ca-certificates
+          clang++ --version | head -1
+          cmake --version | head -1
+          ninja --version
+
+      - name: Fetch the game image
+        id: game
+        env:
+          GH_TOKEN: ${{ secrets.GAME_DATA_TOKEN || github.token }}
+          RELEASE_TAG: ${{ inputs.game_release_tag }}
+          GAME_ASSET: ${{ inputs.game_asset }}
+          GAME_ISO_URL: ${{ inputs.game_iso_url }}
+        run: |
+          set -euo pipefail
+          mkdir -p ports/SonicHeroes/assets
+          if [ -n "${GAME_ISO_URL:-}" ]; then
+            echo "Downloading the game image from the supplied URL"
+            curl -L --fail --retry 3 --connect-timeout 30 -o ports/SonicHeroes/assets/game-input "${GAME_ISO_URL}"
+          else
+            echo "Downloading ${GAME_ASSET} from release ${RELEASE_TAG}"
+            if ! gh release download "${RELEASE_TAG}" --pattern "${GAME_ASSET}" --output ports/SonicHeroes/assets/game-input; then
+              echo "::error::Could not download ${GAME_ASSET} from release ${RELEASE_TAG}."
+              echo "::error::Create a release tagged ${RELEASE_TAG} and upload your own Sonic Heroes ISO as ${GAME_ASSET}."
+              echo "::error::Do not upload game data to a public repository."
+              exit 1
+            fi
+          fi
+          file ports/SonicHeroes/assets/game-input
+          ls -lh ports/SonicHeroes/assets/game-input
+          if file ports/SonicHeroes/assets/game-input | grep -qi 'zip archive'; then
+              echo "Unpacking the game archive"
+              rm -rf ports/SonicHeroes/assets/game-extract
+              unzip -q ports/SonicHeroes/assets/game-input -d ports/SonicHeroes/assets/game-extract
+              xbe=$(find ports/SonicHeroes/assets/game-extract -name default.xbe -print -quit)
+              if [ -z "$xbe" ]; then
+                  echo "::error::The archive has no default.xbe at any depth."
+                  exit 1
+              fi
+              src=$(dirname "$xbe")
+              echo "Copying the game tree from $src"
+              cp -a "$src"/. ports/SonicHeroes/assets/
+              rm -rf ports/SonicHeroes/assets/game-extract
+          else
+              mv ports/SonicHeroes/assets/game-input ports/SonicHeroes/assets/sonic-heroes.iso
+          fi
+          ls -lh ports/SonicHeroes/assets | head
+
+      - name: Prepare the port and recompile the guest code
+        run: |
+          set -euo pipefail
+          python3 tools/prepare.py SonicHeroes
+          ports/SonicHeroes/build.sh --generate-only
+
+      - name: Build the Android APK
+        run: |
+          set -euo pipefail
+          python3 tools/build_android.py SonicHeroes --jobs 4 \
+            --render-percent "${{ inputs.render_percent }}" \
+            --fps-cap "${{ inputs.fps_cap }}" \
+            --power-mode "${{ inputs.power_mode }}" \
+            --resolution-min 50 \
+            --resolution-max 85 \
+            ${{ inputs.dynamic_resolution && '' || '--no-dynamic-resolution' }} \
+            ${{ inputs.precise_pacing && '' || '--no-precise-pacing' }}
+
+      - name: Upload the APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: SonicHeroes-arm64-debug
+          path: dist/SonicHeroes-arm64-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload the generated config and build notes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SonicHeroes-build-notes
+          path: |
+            ports/SonicHeroes/config/game.toml
+            ports/SonicHeroes/PORT_STATUS.md
+          if-no-files-found: warn
+          retention-days: 30

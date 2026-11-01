@@ -35,6 +35,7 @@
 
 #include "core/diag.h"
 #include "core/log.h"
+#include "app/app.h"
 #include "gpu/backend.h"
 #include "kernel/kernel.h"
 #include "kernel/memory.h"
@@ -415,6 +416,7 @@ private:
 #else
         pthread_setname_np(pthread_self(), "render");
 #endif
+        if (app::kGame.render_thread) app::kGame.render_thread();
         Surface paused_front{};
         bool have_front = false;
         for (;;) {

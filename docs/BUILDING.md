@@ -41,7 +41,11 @@ Generated guest C++ lives in the port's ignored `generated/` directory. It must
 come from the same local executable whose configuration is in that port.
 Most ports use `default.xbe`; HOTD3 uses `hod3xb.xbe` and OutRun 2 uses
 `outrun2.xbe`. These three new ports also check the exact executable SHA-256
-before generating code or building an APK.
+before generating code or building an APK. Sonic Heroes uses `default.xbe` and
+does not check a fixed SHA-256: `tools/sonic_heroes.py` writes its config from
+the executable you supply, so any retail build can be brought up. See
+[SONIC_HEROES.md](SONIC_HEROES.md) for the workflow and the first-boot
+checklist.
 The source suite deliberately includes neither executable nor generated C++.
 
 Tools alone can be built without a game:

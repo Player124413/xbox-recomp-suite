@@ -1,9 +1,16 @@
 # Xbox Recomp Suite
 
-Source snapshots for ten original Xbox/Chihiro native ports, their Linux/Vulkan and
-Android tooling, the shared Xbox XBE Recomp runtime, and the porting cookbook.
+Source snapshots for ten original Xbox/Chihiro native ports plus the Sonic Heroes
+bring-up port, their Linux/Vulkan and Android tooling, the shared Xbox XBE
+Recomp runtime, and the porting cookbook.
 SDL and the other source dependencies are vendored with their upstream licenses
 and exact revisions in [`DEPENDENCIES.lock.json`](DEPENDENCIES.lock.json).
+
+**Sonic Heroes is in bring-up.** The port scaffold, Android launcher, touch
+platformer overlay, 60 FPS performance governor and CI workflow are included.
+Build an APK with your own ISO here:
+[Run the Sonic Heroes Android workflow](https://github.com/Player124413/xbox-recomp-suite/actions/workflows/sonic-heroes-android.yml)
+— see [docs/SONIC_HEROES.md](docs/SONIC_HEROES.md) for the release-asset setup.
 
 **No retail game files, extracted content, ISOs/XBEs, generated game C++, saves,
 APKs, or signing keys are included.** Supply your own matching game files to
@@ -22,6 +29,7 @@ is not evidence of complete gameplay support.
 | Virtua Cop 3 (MYSTRO) | ARM64 APK builds; mouse/touch input tests pass | Android device boot/gameplay unverified; Linux gameplay and stage previews verified |
 | The House of the Dead III | ARM64 APK builds; mouse/touch input tests pass | Android device boot/gameplay unverified; Linux first-stage mouse gun verified |
 | OutRun 2 (Chihiro 2.000) | ARM64 APK builds with touch driving controls | Android device boot/gameplay unverified; Linux first-course driving verified |
+| Sonic Heroes | Port scaffold, launcher, touch platformer overlay, 60 FPS governor, CI workflow | Retail boot/gameplay not yet device-verified; the XBE config is generated from your own executable |
 
 The shared Android launcher remembers the selected SD ISO/folder, skips the
 picker while it remains accessible, and ends the native game process on
@@ -77,6 +85,33 @@ Replace `LARush` with `Splashdown`, `Burnout3`, `Links2004`, `NFSHP2`, `PGR1`, o
 `BLACK`, `VCop3`, `HOTD3`, or `OutRun2` to build another title.
 [The run guide](docs/RUNNING.md) lists executable
 names, Android packages, ISO extraction, saves, and troubleshooting.
+
+## Sonic Heroes
+
+Sonic Heroes uses the shared runtime plus a dedicated mobile profile. The
+checked-in `ports/SonicHeroes/config/game.toml` is a template; run
+`python3 tools/sonic_heroes.py ports/SonicHeroes/assets/default.xbe` on your own
+executable to write the real entry point, title id and section list. The build
+script does this automatically and tries `xbe_symbols` when your image's XDK
+build has checked-in signatures.
+
+```sh
+python3 tools/prepare.py SonicHeroes
+ports/SonicHeroes/build.sh --generate-only
+python3 tools/build_android.py SonicHeroes --jobs 4
+adb install -r dist/SonicHeroes-arm64-debug.apk
+```
+
+The APK starts at 60 FPS, no vsync, 75% internal render scale, dynamic
+resolution 50–85%, precise frame pacing and the performance power mode. All of
+it is editable in the in-game settings panel (R3 / Settings). The touch
+overlay provides a left stick, Jump/Action/Special, camera left/right and
+Start. See [docs/SONIC_HEROES.md](docs/SONIC_HEROES.md) and
+[ports/SonicHeroes/patches/README.md](ports/SonicHeroes/patches/README.md) for
+the OGlue fix mapping and the first-boot checklist.
+
+The repository contains no game data. Use your own legally obtained ISO or
+extracted files; do not upload them to a public repository.
 
 Dependencies can be compiled without any game data:
 

@@ -9,6 +9,7 @@
 
 #include "app/app.h"
 #include "core/keyboard_pad.h"
+#include "core/touch_pad.h"
 #include "core/log.h"
 
 namespace input {
@@ -128,6 +129,16 @@ Pad Poll(int port) {
         p.connected = true;
     }
 #endif
+    // the Android touch overlay is a virtual controller 0: merge it after the
+    // keyboard so a connected pad still has the last word on its own buttons
+    if (port == 0 && touch::Active()) {
+        Pad t = touch::Held();
+        p.buttons |= t.buttons;
+        for (int i = 0; i < 8; i++) p.analog[i] = std::max(p.analog[i], t.analog[i]);
+        if (t.lx || t.ly) { p.lx = t.lx; p.ly = t.ly; }
+        if (t.rx || t.ry) { p.rx = t.rx; p.ry = t.ry; }
+        p.connected = true;
+    }
     // R3 is reserved for settings, including the press which resumes.
     p.buttons &= ~uint16_t(1u << 7);
     if (app::kGame.pad) app::kGame.pad(port, p);

@@ -53,6 +53,12 @@
       "source_commit": "32f8454be6ae923c229cccbd5238322889e183d8",
       "overlay_directory": "overlays/chihiro",
       "validation": "Linux gameplay snapshot retained; Android ARM64 APK build and host-side input checks; Android device validation pending"
+    },
+    "SonicHeroes": {
+      "source_checkout": "local bring-up port (no upstream snapshot)",
+      "upstream_commit": null,
+      "config": "generated from the builder's own default.xbe by tools/sonic_heroes.py",
+      "validation": "port scaffold, launcher, touch bridge, performance governor and CI workflow; retail boot/gameplay pending"
     }
   },
   "larush_overlay": "overlays/larush-sdk.patch"

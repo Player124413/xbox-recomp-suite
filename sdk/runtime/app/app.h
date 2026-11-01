@@ -19,6 +19,7 @@ struct Settings {
     DisplayMode display_mode = DisplayMode::Borderless;
     uint32_t width = 0, height = 0;  // 0 is the desktop mode
     uint32_t render_percent = 100;   // of the output height
+    bool render_percent_set = false;  // the settings file named it; do not override a choice
 #ifdef __ANDROID__
     uint32_t fps_cap = 0;            // 0 unlimited
 #else
@@ -34,6 +35,17 @@ struct Settings {
 #endif
     uint32_t aniso = 0;              // 0 as the game asks
     std::string join_ip;                   // co-op: a host past the LAN the system link search also asks
+    // mobile performance governor (off by default; Sonic Heroes enables it)
+    bool dynamic_resolution = false;  // trade internal resolution for a stable frame time
+    bool dynamic_resolution_set = false;  // the settings file named it
+    uint32_t resolution_min = 50;    // percent, the governor's floor
+    uint32_t resolution_max = 100;   // percent, the governor's ceiling
+    uint32_t target_fps = 60;        // the governor's target; 0 leaves the cap in charge
+    bool target_fps_set = false;     // the settings file named it
+    uint32_t power_mode = 0;         // 0 balanced, 1 performance (big cores), 2 powersave
+    bool power_mode_set = false;     // the settings file named it; do not override a choice
+    bool precise_pacing = true;      // absolute-clock sleep for the last milliseconds of a frame
+    bool inline_dpc = false;         // run a DPC on the guest thread that queued it at DISPATCH_LEVEL
 };
 
 Settings& Get();
@@ -122,6 +134,8 @@ struct GameInfo {
     void (*ui)(double fps);        // each frame inside the ImGui frame, UiLock held
     void (*pad)(int port, input::Pad& pad);  // a polled pad before the game gets it
     void (*rumble)(int port, uint16_t& left, uint16_t& right);
+    void (*render_thread)();       // the render thread starts, before its first frame
+    void (*present_thread)();      // after each present, on the render thread
     // the keyboard plays as the first controller (core/keyboard_pad.h); off for a game with its own keyboard controls
     bool keyboard_pad = true;
     void (*toggle_menu)() = nullptr;  // optional title-specific settings panel
@@ -130,5 +144,22 @@ extern const GameInfo kGame;
 
 // sleeps out the rest of the frame for the fps cap
 void Pace();
+
+// frame pacing telemetry: the last frame's wall time in ms, a smoothed rate and
+// the worst frame since the last sample. ReportFrame is called by Pace on the
+// thread that presents; FrameStats is read by the performance governor and the
+// settings panel.
+struct FrameStats {
+    double fps = 0;
+    double frame_ms = 0;
+    double worst_ms = 0;
+    uint64_t frames = 0;
+    double last_report_s = 0;  // steady-clock seconds of the last ReportFrame
+};
+void ReportFrame(double frame_ms);
+FrameStats GetFrameStats();
+// start/stop the Android dynamic-resolution governor; safe to call on desktop
+void PerformanceInit();
+void PerformanceShutdown();
 
 }  // namespace app

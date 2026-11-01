@@ -43,7 +43,7 @@ set(imgui "${XBE_DEPS_SOURCE}/imgui-src")
 add_library(main SHARED ${runtime} ${host} ${game} ${generated}
     "${imgui}/imgui.cpp" "${imgui}/imgui_draw.cpp" "${imgui}/imgui_tables.cpp" "${imgui}/imgui_widgets.cpp"
     "${imgui}/backends/imgui_impl_sdl3.cpp" "${imgui}/backends/imgui_impl_vulkan.cpp"
-    "${common}/vk_shaders_glslang.cpp" "${common}/document_tree.cpp" "${CMAKE_CURRENT_BINARY_DIR}/image_hash.cpp")
+    "${common}/vk_shaders_glslang.cpp" "${common}/document_tree.cpp" "${common}/touch_bridge.cpp" "${CMAKE_CURRENT_BINARY_DIR}/image_hash.cpp")
 target_include_directories(main BEFORE PRIVATE "${XBE_PORT_INCLUDE}")
 target_include_directories(main PRIVATE "${XBE_SDK_DIR}/runtime" "${XBE_SDK_DIR}/runtime/platform/compat"
     "${XBE_REPO_DIR}/src" "${gen}")

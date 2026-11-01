@@ -7,19 +7,42 @@ import org.libsdl.app.SDLActivity;
 
 public class GameActivity extends SDLActivity {
     private ArcadeControls arcadeControls;
+    private PlatformerControls platformerControls;
 
     @Override protected void onCreate(android.os.Bundle state) {
+        // Copy the packaged first-run settings before SDL starts the native
+        // thread. An existing settings.toml is the player's and is kept.
+        try {
+            java.io.File target = new java.io.File(getFilesDir(), "settings.toml");
+            if (!target.exists()) {
+                try (java.io.InputStream in = getAssets().open("settings.toml");
+                     java.io.OutputStream out = new java.io.FileOutputStream(target)) {
+                    byte[] buffer = new byte[8192];
+                    int n;
+                    while ((n = in.read(buffer)) > 0) out.write(buffer, 0, n);
+                }
+            }
+        } catch (java.io.IOException missing) {
+            // The defaults in the runtime are fine without a packaged file.
+        }
         super.onCreate(state);
         String controls = PortConfig.controls(this);
         if (!controls.isEmpty() && mLayout != null) {
-            arcadeControls = new ArcadeControls(this, controls);
-            mLayout.addView(arcadeControls, new android.widget.RelativeLayout.LayoutParams(
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT));
+            if (controls.equals("platformer")) {
+                platformerControls = new PlatformerControls(this);
+                mLayout.addView(platformerControls, new android.widget.RelativeLayout.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT));
+            } else {
+                arcadeControls = new ArcadeControls(this, controls);
+                mLayout.addView(arcadeControls, new android.widget.RelativeLayout.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT));
+            }
         }
     }
 
     @Override protected void onPause() {
         if (arcadeControls != null) arcadeControls.releaseAll();
+        if (platformerControls != null) platformerControls.releaseAll();
         super.onPause();
     }
     @Override public boolean dispatchKeyEvent(android.view.KeyEvent event) {
@@ -36,6 +59,7 @@ public class GameActivity extends SDLActivity {
     }
     @Override public void onWindowFocusChanged(boolean focused) {
         if (!focused && arcadeControls != null) arcadeControls.releaseAll();
+        if (!focused && platformerControls != null) platformerControls.releaseAll();
         super.onWindowFocusChanged(focused);
         if (focused) getWindow().getDecorView().post(() -> {
             if (isFinishing() || isDestroyed()) return;
@@ -58,6 +82,8 @@ public class GameActivity extends SDLActivity {
 
     @Override protected void onDestroy() {
         try {
+            if (platformerControls != null) platformerControls.releaseAll();
+            if (arcadeControls != null) arcadeControls.releaseAll();
             stopService(new android.content.Intent(this, GameSessionService.class));
             super.onDestroy();
         } finally {

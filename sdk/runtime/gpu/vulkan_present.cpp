@@ -351,6 +351,7 @@ void VulkanRenderer::Present(const Surface& front) {
     ResetFrame();
     CountFps();
     if (diag::Perf()) LogPerf();
+    if (app::kGame.present_thread) app::kGame.present_thread();
     if (!host::Pause().Paused()) ApplySettings();
 }
 

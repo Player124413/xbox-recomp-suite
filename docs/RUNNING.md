@@ -32,10 +32,31 @@ All commands below run from the suite root. Title names are case-sensitive:
 | Virtua Cop 3 (MYSTRO) | `VCop3` | `VCop3` | `com.vcop3.recomp` |
 | The House of the Dead III | `HOTD3` | `HOTD3` | `com.hotd3.recomp` |
 | OutRun 2 (Chihiro 2.000) | `OutRun2` | `OutRun2` | `com.outrun2.recomp` |
+| Sonic Heroes | `SonicHeroes` | `SonicHeroes` | `com.sonicheroes.recomp` |
 
 Each APK is `dist/<title>-arm64-debug.apk`. Each Linux executable is under
 `ports/<title>/out/build/linux-release/`. The scripts prepare the appropriate
 shared SDK or title-specific overlay automatically.
+
+## Sonic Heroes
+
+Sonic Heroes' config is generated from your own `default.xbe`:
+
+```sh
+python3 tools/prepare.py SonicHeroes
+ports/SonicHeroes/build.sh --generate-only
+python3 tools/build_android.py SonicHeroes --jobs 4
+adb install -r dist/SonicHeroes-arm64-debug.apk
+adb shell am start -n com.sonicheroes.recomp/.LauncherActivity
+```
+
+The build script extracts an ISO in `ports/SonicHeroes/assets`, writes
+`config/game.toml` with `tools/sonic_heroes.py`, tries `xbe_symbols` when the
+image's XDK build has checked-in signatures, and recompiles. The APK starts
+with the 60 FPS profile (75% render scale, dynamic resolution, precise pacing,
+big-core render thread). The touch overlay provides a left stick, Jump/Action/
+Special, camera left/right, Start and Settings. The full instructions, workflow
+link and first-boot checklist are in [SONIC_HEROES.md](SONIC_HEROES.md).
 
 ## Supply the matching game
 

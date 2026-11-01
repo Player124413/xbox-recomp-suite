@@ -23,3 +23,8 @@ existing third-party notices are also in `sdk/THIRD_PARTY.txt`.
 
 Linux DXC is fetched separately from its pinned upstream distribution; retain
 its bundled notices with any local redistributable build.
+
+Sonic Heroes bring-up notes reference [GenryTheFox0/OGlue](https://github.com/GenryTheFox0/OGlue)
+(MIT) for original-Xbox hardware behaviour and known Sonic Heroes fixes. No
+OGlue source is copied into this repository; the mapping is in
+[`ports/SonicHeroes/patches/README.md`](ports/SonicHeroes/patches/README.md).

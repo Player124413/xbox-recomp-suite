@@ -223,8 +223,19 @@ void UiNewFrame() { ImGui_ImplWin32_NewFrame(); }
 void Pace() {
     using clock = std::chrono::steady_clock;
     static clock::time_point next = clock::now();
+    static clock::time_point last_report = clock::now();
+    static bool first_report = true;
     uint32_t cap = Get().fps_cap;
     auto now = clock::now();
+    if (first_report) {
+        // The first call follows boot and shader compilation; it is not a
+        // frame time the governor should learn from.
+        first_report = false;
+        last_report = now;
+    } else {
+        ReportFrame(std::chrono::duration<double, std::milli>(now - last_report).count());
+        last_report = now;
+    }
     if (!cap) {
         next = now;
         return;
